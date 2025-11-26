@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+    <!-- 
+  HumanLine Validator – Detector Humano vs Bot
+  Autor: Inti Condo
+  Versión: 1.0
+  Año: 2025
+
+  Licencia:
+  Este software se libera bajo licencia Creative Commons 
+  CC BY-NC 4.0 (Atribución – No Comercial).
+
+  Permisos:
+  - Se puede usar, modificar y compartir libremente 
+    con fines personales, educativos o de investigación.
+  - Se debe mantener la atribución al autor original:
+      "Creado por Inti Condo"
+
+  Restricciones:
+  - Prohibido su uso con fines comerciales sin autorización.
+  - Para cualquier integración pagada, servicio comercial,
+    monetización directa o indirecta, se requiere obtener
+    una LICENCIA COMERCIAL oficial del autor.
+
+  Contacto para licencia comercial:
+  inti.condo (intisitoimac@gmail.com)
+
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+Copyright (c) 2025 Inti Condo
+
+This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+
+You are free to:
+
+Share — copy and redistribute the material in any medium or format
+
+Adapt — remix, transform, and build upon the material
+
+Under the following terms:
+
+Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+
+NonCommercial — You may not use the material for commercial purposes.
+
+No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+
+Full license text:
+https://creativecommons.org/licenses/by-nc/4.0/legalcode
+-->
+
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Validación Humana</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: #f5f5f5;
+  }
+
+  #card {
+    background: white;
+    padding: 20px;
+    width: 300px;
+    border-radius: 14px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+
+  #canvas {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-top: 10px;
+    cursor: crosshair;
+  }
+
+  #status {
+    margin-top: 12px;
+    font-weight: bold;
+    color: #444;
+  }
+
+  #go {
+    margin-top: 20px;
+    padding: 10px 20px;
+    border: none;
+    background: #0669ff;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  #go.enabled {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
+</head>
+<body>
+
+<div id="card">
+  <h3>Validación rápida</h3>
+  <p>Dibuja una línea para verificar que eres humano.</p>
+
+  <canvas id="canvas" width="260" height="150"></canvas>
+
+  <div id="status">Esperando…</div>
+
+  <button id="go">Continuar</button>
+</div>
+
+<script>
+  const cv = document.getElementById("canvas");
+  const ctx = cv.getContext("2d");
+  const status = document.getElementById("status");
+  const go = document.getElementById("go");
+
+  let drawing = false;
+  let points = [];
+
+  cv.onmousedown = () => {
+    drawing = true;
+    points = [];
+  };
+  cv.onmouseup = () => {
+    drawing = false;
+    analizar();
+  };
+  cv.onmousemove = (e) => {
+    if (!drawing) return;
+    const rect = cv.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    points.push({x, y, t: performance.now()});
+
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "#1877ff";
+
+    if (points.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(points[points.length-2].x, points[points.length-2].y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+  };
+
+  function coefVar(arr) {
+    if (arr.length < 2) return 0;
+    const m = arr.reduce((a,b)=>a+b)/arr.length;
+    const sd = Math.sqrt(arr.reduce((a,b)=>a+(b-m)**2,0)/arr.length);
+    return sd / m;
+  }
+
+  function analizar() {
+    if (points.length < 10) {
+      status.textContent = "Trazo demasiado corto";
+      return;
+    }
+
+    // velocidad
+    let vel = [];
+    for (let i = 1; i < points.length; i++) {
+      let dx = points[i].x - points[i-1].x;
+      let dy = points[i].y - points[i-1].y;
+      let dt = (points[i].t - points[i-1].t) / 1000;
+      vel.push(Math.sqrt(dx*dx + dy*dy) / dt);
+    }
+
+    let cvVel = coefVar(vel);
+
+    if (cvVel > 0.15) {
+      status.textContent = "Validado ✔ Eres humano";
+      go.classList.add("enabled");
+    } else {
+      status.textContent = "Movimiento demasiado uniforme (posible bot)";
+    }
+  }
+</script>
+
+</body>
+</html>

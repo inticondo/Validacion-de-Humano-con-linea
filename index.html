@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+  <!-- 
+  HumanLine Validator – Detector Humano vs Bot
+  Autor: Inti Condo
+  Versión: 1.0
+  Año: 2025
+
+  Licencia:
+  Este software se libera bajo licencia Creative Commons 
+  CC BY-NC 4.0 (Atribución – No Comercial).
+
+  Permisos:
+  - Se puede usar, modificar y compartir libremente 
+    con fines personales, educativos o de investigación.
+  - Se debe mantener la atribución al autor original:
+      "Creado por Inti Condo"
+
+  Restricciones:
+  - Prohibido su uso con fines comerciales sin autorización.
+  - Para cualquier integración pagada, servicio comercial,
+    monetización directa o indirecta, se requiere obtener
+    una LICENCIA COMERCIAL oficial del autor.
+
+  Contacto para licencia comercial:
+  inti.condo (intisitoimac@gmail.com)
+
+Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+Copyright (c) 2025 Inti Condo
+
+This work is licensed under a Creative Commons Attribution-NonCommercial 4.0 International License.
+
+You are free to:
+
+Share — copy and redistribute the material in any medium or format
+
+Adapt — remix, transform, and build upon the material
+
+Under the following terms:
+
+Attribution — You must give appropriate credit, provide a link to the license, and indicate if changes were made.
+
+NonCommercial — You may not use the material for commercial purposes.
+
+No additional restrictions — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+
+Full license text:
+https://creativecommons.org/licenses/by-nc/4.0/legalcode
+-->
+
+<head>
+  <meta charset="utf-8" />
+  <title>Human Motion Test - Demo</title>
+  <style>
+    body { font-family: Arial; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.6.0/p5.js"></script>
+</head>
+
+<body>
+  <script>
+
+let pts = [];
+let times = [];
+let collecting = false;
+let resultado = "";
+
+function setup() {
+  createCanvas(600, 400);
+  textSize(18);
+}
+
+function draw() {
+  background(245);
+
+  fill(0);
+  text("Dibuja una línea con el mouse por ~1 segundo y suelta.", 20, 30);
+  text("Esto detectará si eres humano o bot.", 20, 55);
+
+  // Trayectoria
+  noFill();
+  stroke(0, 120, 255);
+  beginShape();
+  for (let p of pts) vertex(p.x, p.y);
+  endShape();
+
+  fill(0);
+  text("Resultado: " + resultado, 20, height - 20);
+}
+
+function mousePressed() {
+  pts = [];
+  times = [];
+  collecting = true;
+}
+
+function mouseDragged() {
+  if (collecting) {
+    pts.push(createVector(mouseX, mouseY));
+    times.push(millis() / 1000.0);
+  }
+}
+
+function mouseReleased() {
+  collecting = false;
+  if (pts.length > 5) {
+    resultado = analizarMovimiento();
+  }
+}
+
+
+// -----------------------------------------------------
+
+function analizarMovimiento() {
+  let d = calcularDesviacion();
+  let vv = calcularVariacionVelocidad();
+  let vt = calcularVariacionTiempo();
+  let va = calcularVariacionAceleracion();
+
+  let humano = d > 1.5 && vv > 0.10 && vt > 0.005 && va > 0.05;
+  return humano ? "HUMANO" : "POSIBLE BOT";
+}
+
+function calcularDesviacion() {
+  if (pts.length < 2) return 0;
+  let s = pts[0];
+  let e = pts[pts.length - 1];
+  let line = p5.Vector.sub(e, s);
+  let total = 0;
+
+  for (let p of pts) total += distToLine(p, s, line);
+
+  return total / pts.length;
+}
+
+function distToLine(p, a, line) {
+  let ap = p5.Vector.sub(p, a);
+  return ap.cross(line).mag() / line.mag();
+}
+
+function calcularVariacionVelocidad() {
+  let vel = [];
+  for (let i = 1; i < pts.length; i++) {
+    let dx = pts[i].x - pts[i - 1].x;
+    let dy = pts[i].y - pts[i - 1].y;
+    let dt = times[i] - times[i - 1];
+    if (dt > 0) vel.push(Math.sqrt(dx*dx + dy*dy) / dt);
+  }
+  return coefVariacion(vel);
+}
+
+function calcularVariacionTiempo() {
+  let dif = [];
+  for (let i = 1; i < times.length; i++) {
+    dif.push(times[i] - times[i - 1]);
+  }
+  return coefVariacion(dif);
+}
+
+function calcularVariacionAceleracion() {
+  let vel = [];
+  for (let i = 1; i < pts.length; i++) {
+    let dx = pts[i].x - pts[i - 1].x;
+    let dy = pts[i].y - pts[i - 1].y;
+    let dt = times[i] - times[i - 1];
+    if (dt > 0) vel.push(Math.sqrt(dx*dx + dy*dy) / dt);
+  }
+
+  let acc = [];
+  for (let i = 1; i < vel.length; i++) {
+    let dt = times[i + 1] - times[i];
+    if (dt > 0) acc.push((vel[i] - vel[i - 1]) / dt);
+  }
+
+  return coefVariacion(acc);
+}
+
+function coefVariacion(data) {
+  if (data.length < 2) return 0;
+  let mean = data.reduce((a,b) => a+b) / data.length;
+  let sd = Math.sqrt(data.map(x => (x - mean)**2).reduce((a,b) => a+b) / (data.length - 1));
+  return mean === 0 ? 0 : sd / mean;
+}
+
+  </script>
+</body>
+</html>
